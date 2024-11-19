@@ -5,21 +5,50 @@ import com.example.encryption.util.RSAUtil;
 
 import jakarta.annotation.PostConstruct;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.util.Base64;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 //import javax.annotation.PostConstruct;
 import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+
 
 @Service
 public class EncryptionService {
 
     private KeyPair rsaKeyPair;
+    
+    @Value("${rsa.public.key.path}")
+    private String publicKeyPath;
 
+    @Value("${rsa.private.key.path}")
+    private String privateKeyPath;
+    
     @PostConstruct
     public void init() throws Exception {
-        // Generate RSA key pair
-        rsaKeyPair = RSAUtil.generateRSAKeyPair();
+//        Generate RSA key pair
+//        rsaKeyPair = RSAUtil.generateRSAKeyPair();
+    	
+    	File publicKeyFile = new File(publicKeyPath);
+        File privateKeyFile = new File(privateKeyPath);
+
+        if (publicKeyFile.exists() && privateKeyFile.exists()) {
+            // Loading existing keys
+            PublicKey publicKey = RSAUtil.loadPublicKey(Files.readAllBytes(Paths.get(publicKeyPath)));
+            PrivateKey privateKey = RSAUtil.loadPrivateKey(Files.readAllBytes(Paths.get(privateKeyPath)));
+            rsaKeyPair = new KeyPair(publicKey, privateKey);
+        } else {
+            // Generating new keys and save them to files
+            rsaKeyPair = RSAUtil.generateRSAKeyPair();
+            RSAUtil.saveKeyToFile(publicKeyPath, rsaKeyPair.getPublic().getEncoded());
+            RSAUtil.saveKeyToFile(privateKeyPath, rsaKeyPair.getPrivate().getEncoded());
+        }
     }
+    
 
     public String encryptData(String jsonData) throws Exception {
         // Generate AES key
